@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polling Station Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: #f2f2f2;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .content {
+            padding: 20px;
+        }
+        .card {
+            background-color: #f9f9f9;
+            padding: 20px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .form-group label {
+            margin-right: 10px;
+        }
+        .form-group input,
+        .form-group textarea {
+            flex: 1;
+            padding: 8px;
+            box-sizing: border-box;
+            margin-right: 25px;
+        }
+        .form-horizontal {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .student-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .student-item div {
+            margin-right: 20px;
+        }
+        .student-list {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .student-list .student-item {
+            flex: 1 1 calc(33.333% - 20px);
+            margin: 10px;
+        }
+        .profile-pic {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+        #submitPoll {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        #submitPoll:hover {
+            background-color: #555;
+        }
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+        .password-modal {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .password-modal input {
+            padding: 8px;
+            margin-right: 10px;
+        }
+        .password-modal button {
+            padding: 8px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .password-modal button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+    var staticBaseUrl = "{{ url_for('static', filename='') }}";
+</script>
+
+<div class="navbar">
+    <a href="/" id="homeLink">Home</a>
+    <a href="/create_poll" id="createPollLink">Create Poll</a>
+    <a href="/view_poll" id="viewPollsLink">View Polls</a>
+    <a href="/change_password" id="changePollLink">Change Password</a>
+</div>
+
+<div class="content">
+    <h1>Welcome to the Dashboard</h1>
+    
+    <div class="card">
+        <h2>Poll Title</h2>
+        <form id="titleForm">
+            <div class="form-group">
+                <label for="pollTitle">Title:</label>
+                <input type="text" id="pollTitle" required>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Add Person</h2>
+        <form id="personForm" class="form-horizontal">
+            <div class="form-group">
+                <label for="personName">Name:</label>
+                <input type="text" id="personName" required>
+            </div>
+            <div class="form-group">
+                <label for="rollNumber">Roll Number:</label>
+                <input type="text" id="rollNumber" required>
+            </div>
+            <div class="form-group">
+                <label for="class">Class:</label>
+                <input type="text" id="class" required>
+            </div>
+            <button type="button" id="addPerson">Add Person</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>People List</h2>
+        <div id="peopleList" class="student-list"></div>
+    </div>
+    
+    <button id="submitPoll">Submit Poll</button>
+</div>
+
+<div class="overlay" id="passwordOverlay">
+    <div class="password-modal">
+        <h2>Enter Password</h2>
+        <form id="passwordForm">
+            <input type="password" id="passwordInput" required>
+            <button type="submit" id="passwordSubmit">Submit</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const createPollLink = document.getElementById('createPollLink');
+    const viewPollsLink = document.getElementById('viewPollsLink');
+    const changePollLink = document.getElementById('changePollLink');
+    const passwordOverlay = document.getElementById('passwordOverlay');
+    const passwordForm = document.getElementById('passwordForm');
+    const passwordInput = document.getElementById('passwordInput');
+
+    createPollLink.addEventListener('click', function(event) {
+        event.preventDefault();
+        showPasswordModal('/create_poll');
+    });
+
+    viewPollsLink.addEventListener('click', function(event) {
+        event.preventDefault();
+        showPasswordModal('/view_polls');
+    });
+
+    changePollLink.addEventListener('click', function(event) {
+        event.preventDefault();
+        showPasswordModal('/change_password');
+    });
+
+    function showPasswordModal(endpoint) {
+        passwordOverlay.style.display = 'flex';
+        passwordInput.focus();
+
+        passwordForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const password = passwordInput.value.trim();
+
+            // Simulate password validation (replace with your actual validation logic)
+            if (password) {
+                // Send password and endpoint to /redirect
+                sendCredentials(password, endpoint);
+            } else {
+                alert('Password cannot be empty. Please enter the password.');
+                passwordInput.focus();
+            }
+        });
+    }
+
+    function sendCredentials(password, endpoint) {
+        fetch('/redirect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ password, endpoint }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Response from server:', data);
+            if (data.status != 'failure') {
+                // Redirect to the endpoint if successful
+                window.location.href = data.status;
+            } else {
+                alert('Incorrect password. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+        })
+        .finally(() => {
+            passwordInput.value = '';
+            passwordOverlay.style.display = 'none';
+        });
+    }
+
+    const peopleList = [];
+    const addPersonButton = document.getElementById('addPerson');
+    const personForm = document.getElementById('personForm');
+    const peopleListContainer = document.getElementById('peopleList');
+    const pollTitleInput = document.getElementById('pollTitle');
+
+    addPersonButton.addEventListener('click', function() {
+        const personNameInput = document.getElementById('personName');
+        const rollNumberInput = document.getElementById('rollNumber');
+        const classInput = document.getElementById('class');
+
+        const personName = personNameInput.value.trim();
+        const rollNumber = rollNumberInput.value.trim();
+        const classValue = classInput.value.trim();
+
+        if (personName && rollNumber && classValue) {
+            // Add person to the list
+            peopleList.push({ name: personName, rollNumber: rollNumber, class: classValue });
+
+            // Display people list
+            displayPeople();
+
+            // Clear input fields
+            personNameInput.value = '';
+            rollNumberInput.value = '';
+            classInput.value = '';
+        } else {
+            alert('Please enter all fields: Name, Roll Number, and Class.');
+        }
+    });
+
+    function displayPeople() {
+        peopleListContainer.innerHTML = '';
+
+        peopleList.forEach(person => {
+            const personItem = document.createElement('div');
+            personItem.className = 'student-item';
+            personItem.innerHTML = `
+                <div>
+                    <img src="${staticBaseUrl + 'profile.png'}" class="profile-pic" alt="Profile Picture">
+                </div>
+                <div>
+                    <p><strong>Name:</strong> ${person.name}</p>
+                    <p><strong>Roll Number:</strong> ${person.rollNumber}</p>
+                    <p><strong>Class:</strong> ${person.class}</p>
+                `;
+            peopleListContainer.appendChild(personItem);
+        });
+    }
+
+    document.getElementById('submitPoll').addEventListener('click', function() {
+        const pollTitle = pollTitleInput.value.trim();
+
+        if (!pollTitle) {
+            alert('Please enter a poll title.');
+            return;
+        }
+
+        const data = {
+            pollTitle,
+            people: peopleList
+        };
+
+        // Send data to the /add_poll endpoint
+        fetch('/add_poll', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Success:', data);
+            alert('Poll submitted successfully');
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('Error submitting poll');
+        });
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const conditionalLink = document.querySelector('.conditional-link');
+        
+        // Check if document.referrer is empty (direct entry)
+        if (!document.referrer || document.referrer === '') {
+            // Show the conditional link only if arrived directly
+            window.location.href = '/';
+        }
+    });
+</script>
+
+</body>
+</html>
